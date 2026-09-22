@@ -269,7 +269,7 @@ const App = {
     const ids = Array.from(this.picked);
     if (ids.length < 2) return;
     if (this.config.confirm_delete &&
-        !confirm(t('고른 {count}개를 목록에서 지울까요?', { count: ids.length }))) return;
+        !confirm(t('{count}개를 목록에서 지울까요?', { count: ids.length }))) return;
     try {
       const data = await API.removeAccounts(ids);
       this.accounts = data.accounts;

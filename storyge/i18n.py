@@ -444,7 +444,7 @@ EN = {
         "Drag to resize (double-click to reset)",
     "계정 목록 접기/펼치기": "Hide / show the account list",
     "{count}개 삭제": "Delete {count}",
-    "고른 {count}개를 목록에서 지울까요?": "Remove the {count} selected accounts?",
+    "{count}개를 목록에서 지울까요?": "Remove {count} accounts from the list?",
     "{count}개를 지웠습니다.": "Removed {count}.",
     "등록된 계정이 없습니다.": "No accounts registered yet.",
     "밝기 바꾸기": "Switch light / dark",
