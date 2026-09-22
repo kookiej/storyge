@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="{{ lang }}" data-theme="{{ current_theme }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storyge</title>
+<style>
+  /* 색은 theme.PALETTES 에서 그대로 가져온다 (exe 와 같은 값).
+     CSS 에 hex 를 손으로 적지 않는 이유: 두 곳이 조용히 어긋난다. */
+{%- for name, palette in palettes.items() %}
+  :root[data-theme="{{ name }}"] {
+  {%- for key, value in palette.items() %}
+    --{{ key }}: {{ value }};
+  {%- endfor %}
+  }
+{%- endfor %}
+  :root {
+    --ring: linear-gradient(45deg{% for stop in gradient %}, {{ stop }}{% endfor %});
+    --radius: 10px;
+  }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="rail">
+    <div class="rail-head">
+      <a class="brand" href="/">
+        <strong>Storyge</strong>
+        <small data-t="인스타그램 스토리 저장">인스타그램 스토리 저장</small>
+      </a>
+      <button type="button" class="icon" id="rail-toggle" aria-pressed="false"
+              data-t-title="계정 목록 접기/펼치기" title="계정 목록 접기/펼치기">«</button>
+    </div>
+
+    <form class="add-row" id="add-form">
+      <input id="add-input" autocomplete="off"
+             data-t-placeholder="계정 이름이나 링크 입력"
+             placeholder="계정 이름이나 링크 입력"
+             data-t-title="Enter: 목록에 추가 / Ctrl+Enter: 추가하고 바로 가져오기"
+             title="Enter: 목록에 추가 / Ctrl+Enter: 추가하고 바로 가져오기">
+      <button type="button" class="icon" id="add-expand"
+              data-t-title="넓게 입력" title="넓게 입력">⤢</button>
+      <button type="button" class="btn" id="add-go" data-t="추가">추가</button>
+      <!-- Enter(=submit)는 목록에 넣기만 한다. 바로 가져오는 것은 Ctrl+Enter 뿐이다
+           — 칠 때마다 수집이 시작되면 놀라기 때문이다. -->
+      <button type="submit" hidden aria-hidden="true" tabindex="-1"></button>
+    </form>
+    <p class="hint" data-t="공백으로 구분해 여러 개 입력 가능">공백으로 구분해 여러 개 입력 가능</p>
+
+    <div class="rail-tools">
+      <button type="button" class="link" id="pick-all" data-t="전체 선택">전체 선택</button>
+      <button type="button" class="link" id="pick-none" data-t="전체 해제">전체 해제</button>
+      <button type="button" class="link danger-link" id="bulk-del" hidden></button>
+    </div>
+
+    <ul class="accounts" id="accounts"></ul>
+    <p class="hint" id="accounts-empty" data-t="등록된 계정이 없습니다.">등록된 계정이 없습니다.</p>
+  </aside>
+
+  <div class="splitter" id="splitter" role="separator" aria-orientation="vertical"
+       data-t-title="끌어서 너비 조절 (두 번 누르면 기본값)"
+       title="끌어서 너비 조절 (두 번 누르면 기본값)"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <!-- 접었을 때만 보인다 (CSS). 접힌 레일 안의 단추는 같이 숨으므로 이게 유일한 출구다. -->
+      <button type="button" class="icon" id="rail-show"
+              data-t-title="계정 목록 접기/펼치기" title="계정 목록 접기/펼치기">☰</button>
+      <button type="button" class="btn primary" id="run" data-t="스토리 가져오기">스토리 가져오기</button>
+      <button type="button" class="btn danger" id="cancel" hidden data-t="취소">취소</button>
+      <span class="grow"></span>
+      <button type="button" class="icon" id="theme-toggle" data-t-title="밝기 바꾸기" title="밝기 바꾸기">☾</button>
+      <button type="button" class="icon" id="lang-toggle" title="한국어 / English">EN</button>
+      <button type="button" class="icon" id="settings-open" data-t-title="설정" title="설정">⚙</button>
+    </header>
+
+    <div class="progress" id="progress" hidden>
+      <div class="track" id="progress-track"><div class="fill" id="progress-fill"></div></div>
+      <div class="progress-text" id="progress-text"></div>
+      <div class="spinner" id="spinner"></div>
+    </div>
+
+    <ul class="notes" id="notes" hidden></ul>
+
+    <div class="scroll" id="scroll">
+      <div id="grid"></div>
+      <p class="empty" id="empty" data-t="'스토리 가져오기'를 누르면 여기에 나옵니다.">
+        '스토리 가져오기'를 누르면 여기에 나옵니다.</p>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span id="count" data-t="0개 선택">0개 선택</span>
+    <span class="grow"></span>
+    <button type="button" class="link" id="savedir"></button>
+    <button type="button" class="btn primary" id="save" disabled data-t="저장">저장</button>
+  </footer>
+
+</div>
+
+<dialog id="settings" class="sheet">
+  <form method="dialog" class="sheet-head">
+    <strong data-t="설정">설정</strong>
+    <button class="icon" value="close">✕</button>
+  </form>
+
+  <div class="sheet-body">
+
+    <section>
+      <h3 data-t="저장 폴더">저장 폴더</h3>
+      <div class="row">
+        <!-- 경로는 '폴더 선택' 으로만 정한다. 손으로 적을 수 없으니 '적용' 도 없다. -->
+        <input id="savedir-input" spellcheck="false" readonly placeholder="D:\스토리">
+        <button type="button" class="btn" id="savedir-browse" data-t="폴더 선택">폴더 선택</button>
+        <button type="button" class="btn" id="savedir-open" data-t="폴더 열기">폴더 열기</button>
+      </div>
+      <p class="err" id="savedir-err" hidden></p>
+    </section>
+
+    <section>
+      <h3 data-t="이름 형식">이름 형식</h3>
+      <label class="check">
+        <input type="checkbox" id="use-template">
+        <span data-t="사용자 지정">사용자 지정</span>
+      </label>
+
+      <p class="hint" id="template-off-hint"
+         data-t="해제 시 기본값으로 원본 이름을 씁니다.">
+        해제 시 기본값으로 원본 이름을 씁니다.</p>
+
+      <div id="template-editor" hidden>
+        <input id="template-input" class="mono" spellcheck="false">
+        <div class="chips" id="chips"></div>
+        <div class="row">
+          <button type="button" class="link" id="template-reset"
+                  data-t="기본값으로 되돌리기">기본값으로 되돌리기</button>
+        </div>
+        <p class="err" id="template-err" hidden></p>
+        <p class="warn" id="template-warn" hidden></p>
+      </div>
+
+      <div class="preview" id="preview"></div>
+    </section>
+
+    <section>
+      <h3 data-t="계정">계정</h3>
+      <label class="check">
+        <input type="checkbox" id="confirm-delete">
+        <span data-t="삭제 전 확인">삭제 전 확인</span>
+      </label>
+    </section>
+
+  </div>
+</dialog>
+
+<dialog id="add-sheet" class="sheet">
+  <form method="dialog" class="sheet-head">
+    <strong data-t="계정 입력">계정 입력</strong>
+    <button class="icon" value="close">✕</button>
+  </form>
+  <div class="sheet-body">
+    <textarea id="add-text" rows="10" class="mono" spellcheck="false"
+              data-t-placeholder="계정 이름이나 링크 입력"
+              placeholder="계정 이름이나 링크 입력"></textarea>
+    <p class="hint" data-t="공백으로 구분해 여러 개 입력 가능">공백으로 구분해 여러 개 입력 가능</p>
+    <div class="row sheet-actions">
+      <span class="grow"></span>
+      <button type="button" class="btn" id="add-text-cancel" data-t="취소">취소</button>
+      <button type="button" class="btn primary" id="add-text-ok" data-t="확인">확인</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+  // 한국어 원문이 곧 키다. 없는 키는 원문 그대로 떨어진다 (i18n.t 와 같은 규칙).
+  // 표는 언제나 실려 오고, 쓸지 말지는 window.LANG 이 정한다 — 그래야 언어를
+  // 바꿀 때 새로고침 없이 그 자리에서 다시 칠할 수 있다 (views.py 참고).
+  window.I18N = {{ i18n_table | tojson }};
+  window.LANG = {{ lang | tojson }};
+  function t(text, vars) {
+    var out = (window.LANG === 'en' && window.I18N[text]) || text;
+    if (vars) {
+      for (var key in vars) out = out.split('{' + key + '}').join(vars[key]);
+    }
+    return out;
+  }
+</script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/grid.js') }}"></script>
+<script src="{{ url_for('static', filename='js/template.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

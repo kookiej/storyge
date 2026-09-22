@@ -1,0 +1,14 @@
+# instagrapi 는 인스타그램 비공개 모바일 API 를 쓴다.
+# instaloader 가 쓰던 웹 GraphQL 주소는 인스타그램이 자주 막아서 스토리 수집이 실패한다.
+instagrapi>=2.18,<3
+browser-cookie3>=0.19
+requests>=2.31
+
+# instagrapi 가 Pillow>=12.2 를 요구한다.
+# 전역 파이썬에 moviepy(pillow<12)가 있으면 충돌하므로 반드시 .venv 에 설치할 것.
+Pillow>=12.2,<13
+
+# 웹 버전(python -m storyge serve)의 로컬 서버.
+# exe 두 개는 이걸 쓰지 않는다 — __main__.cmd_serve 안에서만 불러오므로
+# Flask 가 없어도 창 버전과 콘솔 명령은 그대로 돈다.
+Flask>=3.0,<4

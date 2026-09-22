@@ -1,0 +1,13 @@
+# 로그인 세션과 개인 설정이 들어있는 폴더 — 절대 커밋하지 말 것
+data/
+
+# 빌드용 가상환경
+.venv/
+
+# PyInstaller 빌드 산출물
+build/
+dist/
+*.spec
+
+__pycache__/
+*.pyc
