@@ -128,6 +128,30 @@ in the *shared* folder's config. `instagrapi_source._borrowed_login_user()` read
 field** across the split — it is login info, not settings. After the first successful login
 `session._save` writes it into the web's own config, so the lookup stops happening.
 
+### The logo (`assets\`)
+
+One mark for both products: the Instagram story ring with a download arrow inside it,
+transparent background. `assets\make_logo.py` is **the only source** — it writes `logo.svg`,
+`logo.ico` and `logo.png`, so don't hand-edit those three. It reads `theme.GRADIENT` rather
+than repeating hex values, for the same reason `views.css_palettes` does.
+
+Two things in it are load-bearing. The gradient runs along **the ring's own diagonal**
+(`GRAD_FROM`/`GRAD_TO`), not the canvas corners — across the full canvas the circle never
+reaches the ends and the ring comes out pink-to-purple with no orange or blue. And the SVG
+gradient must stay `gradientUnits="userSpaceOnUse"`: the default (`objectBoundingBox`) is
+resolved *per shape*, which would cram all four colors into the arrow alone.
+
+`paths.ASSET_DIR` resolves differently from `DATA_DIR` — bundled read-only files live in
+`sys._MEIPASS` under a onefile exe, not next to the exe. `build.ps1` therefore passes both
+`--icon` (the exe's own icon) and `--add-data` (the copy `gui._set_icon` reads at runtime).
+The window icon goes on **both exes**, not behind `theme.is_styled()`: it is the program's
+face, not a theme.
+
+The web serves the same files from `/logo.svg` and `/favicon.ico` — two explicit routes
+rather than opening the folder — and uses them **for the browser tab only**. There is no
+mark in the rail beside the `Storyge` wordmark; that was tried and removed at the user's
+request. Don't add one back.
+
 ### The item model (`model.py`)
 
 `StoryItemInfo` lives in `model.py`, **not** `fetch.py` — importing `fetch` drags in all of

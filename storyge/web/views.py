@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, send_file
 
-from .. import config, i18n, theme
+from .. import config, i18n, paths, theme
 
 bp = Blueprint("views", __name__)
 
@@ -26,6 +26,19 @@ def css_palettes() -> dict[str, dict[str, str]]:
             if value
         }
     return out
+
+
+# 로고는 web/static 이 아니라 assets\ 에 있다 — exe 아이콘과 **같은 파일**을 쓴다
+# (사본을 두면 둘이 조용히 어긋난다). 폴더째 열지 않고 이 두 개만 내보낸다.
+@bp.get("/logo.svg")
+def logo():
+    return send_file(paths.LOGO_SVG, mimetype="image/svg+xml")
+
+
+@bp.get("/favicon.ico")
+def favicon():
+    """주소창의 /favicon.ico 요청용. 링크는 svg 를 가리키지만 브라우저가 그냥 찾아온다."""
+    return send_file(paths.LOGO_ICO, mimetype="image/x-icon")
 
 
 @bp.get("/")

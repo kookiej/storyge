@@ -56,6 +56,33 @@ def _flat():
     return 0 if theme.is_styled() else None
 
 
+def _set_icon(root: tk.Tk) -> None:
+    """창과 작업표시줄 아이콘을 로고로 바꾼다.
+
+    **두 exe 모두에 적용한다** — 테마가 아니라 프로그램의 얼굴이라
+    theme.is_styled() 로 가르지 않는다.
+
+    default= 로 넘기면 이 뒤에 열리는 Toplevel(선택 창·설정 창)도 같은 아이콘을 쓴다.
+    파일이 없거나(로고를 아직 안 만든 소스 트리) Tk 가 거절해도 창은 떠야 하므로
+    조용히 넘어간다. Tk 는 이 값을 되돌려 주지 않으므로(wm_iconbitmap() 이 빈 문자열),
+    잘 붙었는지는 예외가 안 났다는 것으로만 알 수 있다.
+    """
+    try:
+        root.iconbitmap(default=str(paths.LOGO_ICO))
+    except Exception:          # noqa: BLE001 - 아이콘 하나 때문에 창이 안 뜨면 안 된다
+        pass
+
+    # 소스로 실행하면 작업표시줄이 파이썬 아이콘을 보여 준다 — 윈도우가 창이 아니라
+    # '어느 프로그램인가'로 묶기 때문이다. 이름을 붙여 주면 창 아이콘을 따라온다.
+    # (exe 는 자기 아이콘이 있어 없어도 되지만, 두 경우를 갈라 둘 이유가 없다)
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Storyge")
+    except Exception:          # noqa: BLE001 - 윈도우가 아니거나 막혀 있으면 그만둔다
+        pass
+
+
 # --- 숫자 입력칸 ------------------------------------------------------
 
 _DIGITS = "0123456789"
@@ -936,6 +963,7 @@ class MainWindow:
         # 색 테마는 로그창을 넓게 쓰므로 창을 조금 더 높게 연다
         self.root.geometry("760x700" if theme.is_styled() else "760x640")
         self.root.minsize(680, 560)
+        _set_icon(self.root)
 
         self.cfg = config.load()
         self.busy = False

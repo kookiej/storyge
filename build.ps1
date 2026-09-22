@@ -30,6 +30,15 @@ $targets = @(
     @{ Script = "run_insta.py"; Name = "Storyge";      Label = "인스타 디자인" }
 )
 
+# 로고가 없으면 만든다 (assets\make_logo.py 가 유일한 원본이다).
+# --icon 은 exe 파일 자체의 아이콘이고, --add-data 로 넣는 사본은 창이 띄울 때 쓴다
+# (gui._set_icon 이 paths.LOGO_ICO 에서 읽는다 — onefile 은 sys._MEIPASS 에 풀린다).
+$logo = "assets\logo.ico"
+if (-not (Test-Path $logo)) {
+    Write-Host "로고를 만듭니다..." -ForegroundColor Cyan
+    & $py assets\make_logo.py
+}
+
 foreach ($t in $targets) {
     Write-Host "`n[$($t.Name)] $($t.Label) 빌드 중... (1~3분)" -ForegroundColor Cyan
     & $py -m PyInstaller $t.Script `
@@ -38,6 +47,8 @@ foreach ($t in $targets) {
         --name $t.Name `
         --clean `
         --noconfirm `
+        --icon $logo `
+        --add-data "$logo;assets" `
         --collect-all browser_cookie3 `
         --collect-all instagrapi `
         --collect-submodules pydantic

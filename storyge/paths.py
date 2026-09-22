@@ -34,8 +34,27 @@ def _default_data_dir() -> Path:
     return _base_dir() / "data"
 
 
+def _asset_dir() -> Path:
+    """로고처럼 **프로그램에 딸려 오는 읽기 전용 파일**이 있는 곳.
+
+    data 폴더와 규칙이 다르다. onefile exe 는 번들을 임시 폴더(sys._MEIPASS)에 풀었다가
+    지우는데, 로고는 거기 있고 exe 옆에는 없다. 반대로 설정과 세션은 지워지면 안 되니
+    exe 옆을 쓴다 (_base_dir). 그래서 둘을 따로 잡는다.
+    """
+    bundled = getattr(sys, "_MEIPASS", "")
+    if bundled:
+        return Path(bundled) / "assets"
+    return Path(__file__).resolve().parent.parent / "assets"
+
+
 BASE_DIR = _base_dir()
 DATA_DIR = _default_data_dir()
+
+# 로고. assets/make_logo.py 가 만든다. 창 아이콘과 exe 아이콘, 웹 파비콘이 같은 그림을 쓴다.
+ASSET_DIR = _asset_dir()
+LOGO_ICO = ASSET_DIR / "logo.ico"
+LOGO_SVG = ASSET_DIR / "logo.svg"
+LOGO_PNG = ASSET_DIR / "logo.png"
 
 # 로그인 정보(세션·자격증명)를 둔 곳. 기본은 data 폴더와 같다.
 # 웹은 여기만 exe 와 함께 쓰고 설정·기록은 자기 것을 쓴다 (use_login_dir 참고).
