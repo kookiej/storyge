@@ -139,6 +139,10 @@ EN = {
     "  자동 로그인에 실패했습니다: {reason}": "  Automatic login failed: {reason}",
     "인스타그램이 비밀번호 암호화 키를 보내 주지 않았습니다.":
         "Instagram did not send the password encryption key.",
+    "인스타그램이 로그인을 받아 주지 않았습니다. 아이디와 비밀번호를 확인하거나, "
+    "휴대폰 앱에서 한 번 로그인해 확인 절차를 마친 뒤 다시 시도해 주세요.":
+        "Instagram did not accept the login. Check your ID and password, or log in "
+        "once in the phone app to finish any verification, then try again.",
     "  브라우저 쿠키를 확인하지 못해 건너뜁니다: {reason}":
         "  Could not read browser cookies, skipping: {reason}",
     "  브라우저 쿠키 기능을 쓸 수 없습니다: {reason}":

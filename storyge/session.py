@@ -18,6 +18,7 @@ instaloader 대신 instagrapi 를 쓰는 이유:
 from __future__ import annotations
 
 import getpass
+import time
 from typing import Callable, Optional, Tuple
 
 from instagrapi import Client
@@ -99,7 +100,58 @@ class _Client(Client):
     "int() argument must be ... not 'NoneType'" 라는 알 수 없는 오류로 로그인이 끝난다.
     2.x 최신판(2.18.20)도 그대로이고, 3.x 는 `launcher/sync/` 로 옮겨 고쳤다.
     3.x 는 Pillow 13·curl_cffi 를 끌고 오는 큰 변경이라, 고친 방식만 여기로 가져온다.
+
+    앱 버전도 같은 이유로 여기서 올린다. 2.x 는 `428.0.0.47.67` 로 자신을 소개하는데
+    인스타그램이 이제 그 버전의 로그인을 "Your version of Instagram is out of date" 로
+    거절한다. 아래 값은 3.2.6 의 DEFAULT_APP_VERSION 프로필 그대로다.
     """
+
+    APP_PROFILE = {
+        "app_version": "449.0.0.52.84",
+        "version_code": "1079242191",
+        "bloks_versioning_id": "799db3e387d7a21a19c72918b8698b6cd28a1516ade363792c100ed45a0f9f0b",
+    }
+
+    def init(self) -> bool:
+        # init() 은 생성할 때와 load_settings() 때 모두 불린다.
+        # 저장된 session.json 에는 옛 앱 버전과 그 버전으로 만든 user_agent 가 들어 있어
+        # 그대로 두면 되살아나므로, 매번 덮어쓰고 user_agent 를 새로 만든다.
+        # 헤더는 요청마다 base_headers 에서 다시 만들어지니 이 두 값만 바꾸면 된다.
+        result = super().init()
+        self.set_app(dict(self.APP_PROFILE))
+        self.set_user_agent()
+        return result
+
+    def login(self, username=None, password=None, relogin=False, verification_code=""):
+        """옛 로그인 주소가 막혔으면 지금 앱이 쓰는 CAA(Bloks) 로그인으로 넘어간다.
+
+        인스타그램은 이제 `accounts/login/` 을 앱 버전과 상관없이 "out of date" 로
+        거절한다 (instagrapi 3.2.6 의 최신 앱 버전으로도 똑같이 거절됨을 확인했다).
+        2.x 에도 CAA 로그인(`bloks_caa_login`)이 들어 있지만, 비밀번호 오류일 때만
+        그쪽으로 넘어가고 이 오류에서는 넘어가지 않는다. 그래서 여기서 이어 준다.
+        옛 주소부터 시도하는 순서는 instagrapi 와 같게 둔다 — 준비 요청이 남기는
+        쿠키를 CAA 가 그대로 쓰고, 인스타그램이 옛 주소를 다시 열면 그대로 통한다.
+        """
+        try:
+            return super().login(username, password, relogin=relogin,
+                                 verification_code=verification_code)
+        except Exception as err:
+            if not _needs_app_upgrade(err):
+                raise
+            legacy = err
+
+        # 2단계 인증이 필요하면 TwoFactorRequired 가 그대로 올라가고,
+        # _do_login 이 코드를 받아 verification_code 와 함께 다시 부른다.
+        if not self._try_caa_login(legacy, verification_code=verification_code):
+            raise ClientError(t(
+                "인스타그램이 로그인을 받아 주지 않았습니다. 아이디와 비밀번호를 확인하거나, "
+                "휴대폰 앱에서 한 번 로그인해 확인 절차를 마친 뒤 다시 시도해 주세요."
+            )) from legacy
+        # 옛 주소로 성공했을 때 instagrapi 가 하는 마무리와 같다.
+        self.login_flow()
+        self.last_login = time.time()
+        self.relogin_attempt = 0
+        return True
 
     def password_publickeys(self):
         failure: Optional[BaseException] = None
@@ -121,6 +173,12 @@ class _Client(Client):
                 t("인스타그램이 비밀번호 암호화 키를 보내 주지 않았습니다.")
             ) from failure
         return int(key_id), key
+
+
+def _needs_app_upgrade(err: BaseException) -> bool:
+    # 2.x 는 UnknownError, 3.x 는 ClientNeedsUpgradeError 로 같은 문장을 돌려준다.
+    return (type(err).__name__ == "ClientNeedsUpgradeError"
+            or "version of instagram is out of date" in str(err).lower())
 
 
 def _new_client() -> Client:
