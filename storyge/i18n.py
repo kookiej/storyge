@@ -137,6 +137,8 @@ EN = {
     "  저장된 비밀번호가 더 이상 맞지 않습니다. 다시 입력이 필요합니다.":
         "  The saved password no longer works. You will need to enter it again.",
     "  자동 로그인에 실패했습니다: {reason}": "  Automatic login failed: {reason}",
+    "인스타그램이 비밀번호 암호화 키를 보내 주지 않았습니다.":
+        "Instagram did not send the password encryption key.",
     "  브라우저 쿠키를 확인하지 못해 건너뜁니다: {reason}":
         "  Could not read browser cookies, skipping: {reason}",
     "  브라우저 쿠키 기능을 쓸 수 없습니다: {reason}":

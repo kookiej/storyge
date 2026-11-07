@@ -24,6 +24,7 @@ from instagrapi import Client
 from instagrapi.exceptions import (
     BadPassword,
     ChallengeRequired,
+    ClientError,
     ClientLoginRequired,
     ClientThrottledError,
     LoginRequired,
@@ -89,8 +90,41 @@ RATE_LIMIT_HELP = (
 )
 
 
+class _Client(Client):
+    """instagrapi 2.x 의 로그인 고장 하나를 고친 Client.
+
+    비밀번호 로그인은 먼저 인스타그램의 비밀번호 암호화 공개키를 받아 와야 한다.
+    instagrapi 2.x 는 그 키를 `qe/sync/` 응답 헤더에서 읽는데, 인스타그램이 그 주소를
+    닫아(404) 헤더가 오지 않는다. 그러면 `int(None)` 이 터져
+    "int() argument must be ... not 'NoneType'" 라는 알 수 없는 오류로 로그인이 끝난다.
+    2.x 최신판(2.18.20)도 그대로이고, 3.x 는 `launcher/sync/` 로 옮겨 고쳤다.
+    3.x 는 Pillow 13·curl_cffi 를 끌고 오는 큰 변경이라, 고친 방식만 여기로 가져온다.
+    """
+
+    def password_publickeys(self):
+        failure: Optional[BaseException] = None
+        try:
+            self.private_request(
+                "launcher/sync/",
+                {"id": self.uuid, "server_config_retrieval": "1"},
+                login=True,
+            )
+        except Exception as err:
+            # 응답이 실패로 처리돼도 키 헤더는 붙어 올 수 있으니 헤더부터 본다.
+            failure = err
+        response = self.last_response
+        headers = response.headers if response is not None else {}
+        key_id = headers.get("ig-set-password-encryption-key-id")
+        key = headers.get("ig-set-password-encryption-pub-key")
+        if not key_id or not key:
+            raise ClientError(
+                t("인스타그램이 비밀번호 암호화 키를 보내 주지 않았습니다.")
+            ) from failure
+        return int(key_id), key
+
+
 def _new_client() -> Client:
-    client = Client()
+    client = _Client()
     client.delay_range = DELAY_RANGE      # 요청 사이에 무작위로 쉬어 차단을 피한다
     return client
 
